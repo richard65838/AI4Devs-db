@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
@@ -14,6 +11,102 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Company {
+  id              Int             @id @default(autoincrement())
+  name            String          @db.VarChar(100)
+  description     String?
+  contact_info    String?         @db.VarChar(255)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @default(now()) @updatedAt
+  employees       Employee[]
+  positions       Position[]
+  interviewFlows  InterviewFlow[]
+}
+
+model Employee {
+  id                  Int                    @id @default(autoincrement())
+  company_id          Int
+  name                String                 @db.VarChar(100)
+  email               String                 @unique @db.VarChar(255)
+  role                String                 @db.VarChar(50)
+  is_active           Boolean                @default(true)
+  access_permissions  Json?
+  created_at          DateTime               @default(now())
+  updated_at          DateTime               @default(now()) @updatedAt
+  company             Company                @relation(fields: [company_id], references: [id])
+  positions           Position[]             @relation("ResponsibleEmployee")
+  createdPositions    Position[]             @relation("PositionCreator")
+  applicationModified Application[]          @relation("ApplicationModifier")
+  historyChanges      ApplicationHistory[]
+  interviewParticipant InterviewParticipant[]
+  interviewFeedback    InterviewFeedback[]
+}
+
+model Position {
+  id                      Int             @id @default(autoincrement())
+  company_id              Int
+  interview_flow_id       Int
+  responsible_employee_id Int
+  title                   String          @db.VarChar(100)
+  status                  String          @db.VarChar(50)
+  is_visible              Boolean         @default(true)
+  location                String?         @db.VarChar(100)
+  job_description         String?
+  requirements            String?
+  responsibilities        String?
+  benefits                String?
+  employment_type         String?         @db.VarChar(50)
+  salary_min              Decimal?        @db.Decimal(10, 2)
+  salary_max              Decimal?        @db.Decimal(10, 2)
+  experience_level        String?         @db.VarChar(50)
+  application_deadline    DateTime?
+  created_at              DateTime        @default(now())
+  updated_at              DateTime        @default(now()) @updatedAt
+  created_by              Int?
+  company                 Company         @relation(fields: [company_id], references: [id])
+  interviewFlow           InterviewFlow   @relation(fields: [interview_flow_id], references: [id])
+  responsibleEmployee     Employee        @relation("ResponsibleEmployee", fields: [responsible_employee_id], references: [id])
+  creator                 Employee?       @relation("PositionCreator", fields: [created_by], references: [id])
+  applications            Application[]
+}
+
+model InterviewFlow {
+  id          Int             @id @default(autoincrement()) @map("id")
+  name        String          @db.VarChar(100)
+  description String?
+  company_id  Int
+  is_template Boolean         @default(false)
+  created_at  DateTime        @default(now())
+  company     Company         @relation(fields: [company_id], references: [id])
+  steps       InterviewStep[]
+  positions   Position[]
+
+  @@map("Interview_Flow")
+}
+
+model InterviewStep {
+  id                Int           @id @default(autoincrement())
+  interview_flow_id Int
+  interview_type_id Int
+  name              String        @db.VarChar(100)
+  order_index       Int
+  evaluation_criteria Json?
+  interviewFlow     InterviewFlow @relation(fields: [interview_flow_id], references: [id])
+  interviewType     InterviewType @relation(fields: [interview_type_id], references: [id])
+  interviews        Interview[]
+
+  @@map("Interview_Step")
+}
+
+model InterviewType {
+  id          Int            @id @default(autoincrement())
+  name        String         @db.VarChar(50)
+  description String?
+  steps       InterviewStep[]
+
+  @@map("Interview_Type")
+}
+
 model Candidate {
   id                Int               @id @default(autoincrement())
   firstName         String            @db.VarChar(100)
@@ -21,9 +114,15 @@ model Candidate {
   email             String            @unique @db.VarChar(255)
   phone             String?           @db.VarChar(15)
   address           String?           @db.VarChar(100)
+  privacy_settings  Json?
+  data_retention_date DateTime?
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @default(now()) @updatedAt
   educations        Education[]
   workExperiences   WorkExperience[]
-  resumes           Resume[]
+  documents         Document[]
+  profile           CandidateProfile?
+  applications      Application[]
 }
 
 model Education {
@@ -47,11 +146,124 @@ model WorkExperience {
   candidate   Candidate @relation(fields: [candidateId], references: [id])
 }
 
-model Resume {
+model CandidateProfile {
   id          Int       @id @default(autoincrement())
-  filePath    String    @db.VarChar(500)
-  fileType    String    @db.VarChar(50)
-  uploadDate  DateTime
-  candidateId Int
-  candidate   Candidate @relation(fields: [candidateId], references: [id])
+  candidate_id Int      @unique
+  skills      Json?
+  summary     String?
+  preferences Json?
+  updated_at  DateTime  @default(now()) @updatedAt
+  candidate   Candidate @relation(fields: [candidate_id], references: [id])
+
+  @@map("Candidate_Profile")
+}
+
+model Document {
+  id              Int       @id @default(autoincrement())
+  candidateId     Int
+  document_type   String    @db.VarChar(50)
+  filename        String    @db.VarChar(255)
+  storage_path    String    @db.VarChar(500)
+  storage_provider String   @db.VarChar(50) @default("local")
+  content_hash    String?   @db.VarChar(255)
+  file_size       Int?
+  mime_type       String?   @db.VarChar(100)
+  version         Int       @default(1)
+  is_current      Boolean   @default(true)
+  upload_date     DateTime  @default(now())
+  metadata        Json?
+  candidate       Candidate @relation(fields: [candidateId], references: [id])
+  applications    Application[]
+
+  @@map("Document")
+}
+
+model Application {
+  id                  Int               @id @default(autoincrement())
+  position_id         Int
+  candidate_id        Int
+  resume_document_id  Int
+  application_date    DateTime          @default(now())
+  status              String            @db.VarChar(50)
+  notes               String?
+  last_status_change  DateTime          @default(now())
+  last_modified_by    Int?
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @default(now()) @updatedAt
+  position            Position          @relation(fields: [position_id], references: [id])
+  candidate           Candidate         @relation(fields: [candidate_id], references: [id])
+  resumeDocument      Document          @relation(fields: [resume_document_id], references: [id])
+  modifiedBy          Employee?         @relation("ApplicationModifier", fields: [last_modified_by], references: [id])
+  history             ApplicationHistory[]
+  interviewProcess    InterviewProcess?
+}
+
+model ApplicationHistory {
+  id              Int       @id @default(autoincrement())
+  application_id  Int
+  previous_status String    @db.VarChar(50)
+  new_status      String    @db.VarChar(50)
+  change_reason   String?
+  changed_by      Int?
+  changed_at      DateTime  @default(now())
+  application     Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  employee        Employee?   @relation(fields: [changed_by], references: [id])
+
+  @@map("Application_History")
+}
+
+model InterviewProcess {
+  id              Int           @id @default(autoincrement())
+  application_id  Int           @unique
+  start_date      DateTime      @default(now())
+  current_status  String        @db.VarChar(50)
+  updated_at      DateTime      @default(now()) @updatedAt
+  status_history  Json?
+  application     Application   @relation(fields: [application_id], references: [id])
+  interviews      Interview[]
+
+  @@map("Interview_Process")
+}
+
+model Interview {
+  id                    Int                     @id @default(autoincrement())
+  interview_process_id  Int
+  interview_step_id     Int
+  interview_date        DateTime
+  result                String?                 @db.VarChar(50)
+  sequence_number       Int
+  summary               String?
+  created_at            DateTime                @default(now())
+  updated_at            DateTime                @default(now()) @updatedAt
+  interviewProcess      InterviewProcess        @relation(fields: [interview_process_id], references: [id])
+  interviewStep         InterviewStep           @relation(fields: [interview_step_id], references: [id])
+  participants          InterviewParticipant[]
+  feedback              InterviewFeedback[]
+}
+
+model InterviewParticipant {
+  id              Int       @id @default(autoincrement())
+  interview_id    Int
+  employee_id     Int
+  role            String    @db.VarChar(50)
+  is_primary      Boolean   @default(false)
+  interview       Interview @relation(fields: [interview_id], references: [id], onDelete: Cascade)
+  employee        Employee  @relation(fields: [employee_id], references: [id])
+
+  @@map("Interview_Participant")
+}
+
+model InterviewFeedback {
+  id                Int       @id @default(autoincrement())
+  interview_id      Int
+  employee_id       Int
+  evaluation_scores Json?
+  comments          String?
+  recommendation    String?   @db.VarChar(50)
+  submitted_at      DateTime  @default(now())
+  is_confidential   Boolean   @default(false)
+  interview         Interview @relation(fields: [interview_id], references: [id], onDelete: Cascade)
+  employee          Employee  @relation(fields: [employee_id], references: [id])
+
+  @@map("Interview_Feedback")
 }

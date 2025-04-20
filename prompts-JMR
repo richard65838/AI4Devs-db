@@ -1,0 +1,118 @@
+1. Generame un Grafico UML en mermaid que represente la base de datos.
+
+2. Perfecto ahoar Convierte Este archivo ERD en formato mermaid:
+erDiagram
+     COMPANY {
+         int id PK
+         string name
+     }
+     EMPLOYEE {
+         int id PK
+         int company_id FK
+         string name
+         string email
+         string role
+         boolean is_active
+     }
+     POSITION {
+         int id PK
+         int company_id FK
+         int interview_flow_id FK
+         string title
+         text description
+         string status
+         boolean is_visible
+         string location
+         text job_description
+         text requirements
+         text responsibilities
+         numeric salary_min
+         numeric salary_max
+         string employment_type
+         text benefits
+         text company_description
+         date application_deadline
+         string contact_info
+     }
+     INTERVIEW_FLOW {
+         int id PK
+         string description
+     }
+     INTERVIEW_STEP {
+         int id PK
+         int interview_flow_id FK
+         int interview_type_id FK
+         string name
+         int order_index
+     }
+     INTERVIEW_TYPE {
+         int id PK
+         string name
+         text description
+     }
+     CANDIDATE {
+         int id PK
+         string firstName
+         string lastName
+         string email
+         string phone
+         string address
+     }
+     APPLICATION {
+         int id PK
+         int position_id FK
+         int candidate_id FK
+         date application_date
+         string status
+         text notes
+     }
+     INTERVIEW {
+         int id PK
+         int application_id FK
+         int interview_step_id FK
+         int employee_id FK
+         date interview_date
+         string result
+         int score
+         text notes
+     }
+
+     COMPANY ||--o{ EMPLOYEE : employs
+     COMPANY ||--o{ POSITION : offers
+     POSITION ||--|| INTERVIEW_FLOW : assigns
+     INTERVIEW_FLOW ||--o{ INTERVIEW_STEP : contains
+     INTERVIEW_STEP ||--|| INTERVIEW_TYPE : uses
+     POSITION ||--o{ APPLICATION : receives
+     CANDIDATE ||--o{ APPLICATION : submits
+     APPLICATION ||--o{ INTERVIEW : has
+     INTERVIEW ||--|| INTERVIEW_STEP : consists_of
+     EMPLOYEE ||--o{ INTERVIEW : conducts
+
+Luego procede a fusionarlo con el UML adcual
+
+3. En base a esta estructura:
+Analizala, bajo los siguientes criterios:
+1. Identificar entidades o atributos redundantes y sugerir formas de eliminarlos.
+2. Recomendar la normalizacion de entidades que no cumplen con las formas normales.
+3. Sugerir la creacion de indices en columnas frecuentemente utilizadas en queries para mejorar el rendimiento.
+4. Identificar relaciones faltantes o incorrectas entre entidades.
+
+Has un listado con las sugenencias y justifica cada una de ellas
+
+
+4. Eres un experto en Arquitectura de base de datos. Estas haciendo una auditoria a LIT, una empresa que esta haciendo un ATS Genera comentarios y dudas que podrias tener con esta ultima estructura de la base de datos.
+
+Bueno considerando que queremos llegar a esta Base de datos, genera un plan con los pasos necesarios para modificar la base de datos y llegar a los resultados.
+Aun no los implementes solo enumeralos
+
+
+5. Si, estoy de acurrdo con:
+Complejidad de consultas
+Granularidad excesiva
+Flexibilidad limitada en entrevistas
+Almacenamiento de archivos
+Seguridad y privacidad
+
+Genera los cambios en el plan de base de datos y regenera el diagrama uml en mermaid
+
+6. Implementa los cambios planeados en el archivo mermaid en schema.prisma
